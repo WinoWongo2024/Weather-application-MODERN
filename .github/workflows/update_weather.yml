@@ -1,1 +1,24 @@
+name: Hourly Weather Update
+on:
+  schedule:
+    - cron: '0 * * * *' # Runs every hour on the hour
+  workflow_dispatch: # Allows you to run it manually for testing
 
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      - name: Generate Weather
+        run: python generate_weather.py
+      - name: Commit and Push
+        run: |
+          git config --global user.name "ÖestVèl Weather Bot"
+          git config --global user.email "bot@oestvel.gov"
+          git add weather.json
+          git commit -m "Update weather for $(date)"
+          git push
