@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>X39 ÖestVèl Express Simulator</title>
+    <title>X39 Simulator - AS-20260203-0834</title>
     <style>
         :root {
-            --display-blue: #1a1a4d;
-            --highlight-pink: #ff00ff;
+            --display-blue: #161a3d;
+            --highlight-pink: #d600d6;
             --alert-yellow: #ffcc00;
         }
 
         body {
             background-color: #000;
             color: white;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             margin: 0;
             display: flex;
             flex-direction: column;
@@ -24,13 +24,14 @@
         }
 
         #bus-display {
-            width: 95%;
-            max-width: 500px;
+            width: 90vw;
+            height: 60vh;
             background-color: var(--display-blue);
-            border-radius: 12px;
-            padding: 25px;
-            border: 2px solid #333;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
         }
 
         .header {
@@ -38,13 +39,13 @@
             justify-content: space-between;
             color: var(--highlight-pink);
             font-weight: bold;
-            margin-bottom: 30px;
-            font-size: 1.1rem;
+            font-size: 1.4rem;
         }
 
         .route-visual {
             display: flex;
-            gap: 20px;
+            gap: 25px;
+            margin-top: 40px;
         }
 
         .line-container {
@@ -53,68 +54,71 @@
             align-items: center;
         }
 
-        .node {
-            width: 18px;
-            height: 18px;
+        .node-active {
+            width: 24px;
+            height: 24px;
             background: var(--highlight-pink);
             border-radius: 50%;
-            z-index: 2;
+            box-shadow: 0 0 15px var(--highlight-pink);
         }
 
         .connector {
-            width: 6px;
-            height: 80px;
-            background: #ffffff55;
-            margin: -2px 0;
-        }
-
-        .stop-info {
-            flex-grow: 1;
-        }
-
-        .stop-box {
+            width: 8px;
             height: 100px;
+            background: #555;
         }
+
+        .node-next {
+            width: 20px;
+            height: 20px;
+            background: #444;
+            border-radius: 50%;
+        }
+
+        .stop-info { flex-grow: 1; }
 
         .stop-name {
-            font-size: 1.9rem;
+            font-size: 2.5rem;
             font-weight: 800;
-            line-height: 1.2;
+            margin: 0;
         }
 
-        .closed-text {
-            text-decoration: line-through;
-            opacity: 0.7;
-        }
-
-        .status-alert {
+        .status-msg {
             color: var(--alert-yellow);
-            font-size: 1rem;
-            margin-top: 5px;
-            font-weight: 500;
+            font-size: 1.2rem;
+            margin-top: 10px;
         }
 
         .footer-banner {
-            margin-top: 30px;
             background: #fff;
             color: var(--display-blue);
             text-align: center;
-            padding: 8px;
-            font-size: 1.5rem;
+            padding: 10px;
+            font-size: 2rem;
             font-weight: 900;
-            letter-spacing: 2px;
-            text-transform: uppercase;
+            letter-spacing: 3px;
         }
 
-        #start-btn {
+        #controls {
             margin-top: 20px;
+            text-align: center;
+        }
+
+        .btn {
             padding: 15px 30px;
             background: var(--highlight-pink);
             border: none;
             color: white;
             font-weight: bold;
-            border-radius: 50px;
+            border-radius: 5px;
             cursor: pointer;
+        }
+
+        #debug-gps {
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 10px;
         }
     </style>
 </head>
@@ -122,105 +126,125 @@
 
     <div id="bus-display">
         <div class="header">
-            <span id="clock">--:--</span>
+            <span id="clock">19:38</span>
             <span>X39 BRISTOL EXPRESS</span>
         </div>
 
         <div class="route-visual">
             <div class="line-container">
-                <div class="node"></div>
+                <div class="node-active"></div>
                 <div class="connector"></div>
-                <div class="node" style="background: #666;"></div>
+                <div class="node-next"></div>
             </div>
             <div class="stop-info">
-                <div class="stop-box">
-                    <div id="display-name" class="stop-name">Awaiting GPS</div>
-                    <div id="display-status" class="status-alert">Press Start to Track</div>
-                </div>
-                <div class="stop-box">
-                    <div id="next-name" class="stop-name" style="font-size: 1.2rem; opacity: 0.5;">---</div>
-                </div>
+                <div id="curr-stop" class="stop-name">Awaiting GPS</div>
+                <div id="curr-status" class="status-msg">Searching for satellite...</div>
+                <div id="next-stop" class="stop-name" style="font-size: 1.4rem; opacity: 0.4; margin-top: 20px;">---</div>
             </div>
         </div>
 
-        <div class="footer-banner" id="destination-label">BRISTOL</div>
+        <div class="footer-banner">BRISTOL</div>
     </div>
 
-    <button id="start-btn" onclick="initSimulator()">START TRACKING</button>
+    <div id="controls">
+        <button class="btn" onclick="startApp()">START SYSTEM</button>
+        <div id="debug-gps">Lat: 0.000 | Lon: 0.000</div>
+    </div>
 
     <script>
+        // Expanded Stop List
         const STOPS = [
-            { name: "Bath Bus Station", lat: 51.3797, lon: -2.3585, closed: false, msg: "Terminus" },
-            { name: "Windsor Villas", lat: 51.3854, lon: -2.3831, closed: false, msg: "Lower Weston" },
-            { name: "Charmouth Road", lat: 51.3912, lon: -2.4012, closed: false, msg: "Newbridge" },
-            { name: "The Globe", lat: 51.3965, lon: -2.4312, closed: false, msg: "Newton St Loe" },
-            { name: "Saltford", lat: 51.4022, lon: -2.4515, closed: false, msg: "The Shallows" },
-            { name: "Ellsbridge House", lat: 51.4115, lon: -2.4851, closed: false, msg: "Keynsham" },
-            { name: "Brislington Square", lat: 51.4345, lon: -2.5512, closed: true, msg: "STOP CLOSED - ROADWORKS" },
-            { name: "Arnos Vale", lat: 51.4423, lon: -2.5658, closed: false, msg: "Cemetery Gates" },
-            { name: "Temple Meads Stn", lat: 51.4497, lon: -2.5812, closed: false, msg: "Rail Connections" },
-            { name: "Bristol Bus Station", lat: 51.4592, lon: -2.5932, closed: false, msg: "Final Destination" }
+            { name: "Bath Bus Station", lat: 51.3797, lon: -2.3585, msg: "Change for Rail Services" },
+            { name: "Windsor Villas", lat: 51.3854, lon: -2.3831, msg: "Lower Weston" },
+            { name: "The Globe", lat: 51.3965, lon: -2.4312, msg: "Newton St Loe" },
+            { name: "Saltford", lat: 51.4022, lon: -2.4515, msg: "The Shallows" },
+            { name: "Ellsbridge House", lat: 51.4115, lon: -2.4851, msg: "Keynsham" },
+            { name: "Brislington Square", lat: 51.4345, lon: -2.5512, msg: "STOP CLOSED - USE CALLINGTON RD" },
+            { name: "Temple Meads Stn", lat: 51.4497, lon: -2.5812, msg: "Bristol Rail Station" },
+            { name: "Bristol Bus Station", lat: 51.4592, lon: -2.5932, msg: "End of Journey" }
         ];
 
-        let lastStopIndex = -1;
+        let lastIndex = -1;
 
-        function updateClock() {
-            const now = new Date();
-            document.getElementById('clock').innerText = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-        }
-        setInterval(updateClock, 1000);
-
-        function initSimulator() {
-            document.getElementById('start-btn').style.display = 'none';
+        function startApp() {
+            // Wake up TTS
+            speak("System initialised. Navigating to Bristol.");
+            
             if (navigator.geolocation) {
-                navigator.geolocation.watchPosition(updateLocation, error => console.log(error), {
+                navigator.geolocation.watchPosition(updatePos, (err) => {
+                    document.getElementById('curr-status').innerText = "GPS Error: " + err.message;
+                }, {
                     enableHighAccuracy: true,
-                    maximumAge: 0
+                    maximumAge: 1000
                 });
-                speak("GPS tracking active. Welcome to ÖestVèl Transit.");
             }
         }
 
-        function updateLocation(position) {
-            const lat = position.coords.latitude;
-            const lon = position.coords.longitude;
+        function updatePos(pos) {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            document.getElementById('debug-gps').innerText = `Lat: ${lat.toFixed(4)} | Lon: ${lon.toFixed(4)}`;
 
-            STOPS.forEach((stop, index) => {
-                const distance = Math.sqrt(Math.pow(lat - stop.lat, 2) + Math.pow(lon - stop.lon, 2));
-                
-                // Trigger within ~150 meters
-                if (distance < 0.0015 && lastStopIndex !== index) {
-                    lastStopIndex = index;
-                    refreshDisplay(index);
+            STOPS.forEach((stop, i) => {
+                const d = Math.sqrt(Math.pow(lat - stop.lat, 2) + Math.pow(lon - stop.lon, 2));
+                // Increased radius to 0.003 for better highway detection (~300m)
+                if (d < 0.003 && lastIndex !== i) {
+                    lastIndex = i;
+                    renderStop(i);
                 }
             });
         }
 
-        function refreshDisplay(index) {
-            const stop = STOPS[index];
-            const nextStop = STOPS[index + 1] || { name: "End of Route" };
+        function renderStop(i) {
+            const stop = STOPS[i];
+            const next = STOPS[i+1] || { name: "Terminus" };
+            
+            document.getElementById('curr-stop').innerText = stop.name;
+            document.getElementById('curr-status').innerText = stop.msg;
+            document.getElementById('next-stop').innerText = next.name;
 
-            const nameEl = document.getElementById('display-name');
-            nameEl.innerText = stop.name;
-            document.getElementById('next-name').innerText = nextStop.name;
-            document.getElementById('display-status').innerText = stop.msg;
-
-            if (stop.closed) {
-                nameEl.classList.add('closed-text');
-                speak("Next stop, " + stop.name + ". This stop is currently closed. Please use the next available stop.");
+            let announcement = `Next stop, ${stop.name}. ${stop.msg}`;
+            if(stop.name === "Brislington Square") {
+                announcement = `Next stop, Brislington Square. This stop is currently closed. Please use the next available stop.`;
+                document.getElementById('curr-stop').style.textDecoration = "line-through";
             } else {
-                nameEl.classList.remove('closed-text');
-                speak("Next stop, " + stop.name + ". " + stop.msg);
+                document.getElementById('curr-stop').style.textDecoration = "none";
             }
+            
+            speak(announcement);
         }
 
         function speak(text) {
-            window.speechSynthesis.cancel(); // Clear queue
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'en-GB';
-            utterance.rate = 0.9; // Slightly slower for that bus-announcement feel
-            window.speechSynthesis.speak(utterance);
+            window.speechSynthesis.cancel();
+            const msg = new SpeechSynthesisUtterance(text);
+            
+            // Realistic British Voice Logic
+            const voices = window.speechSynthesis.getVoices();
+            // Try to find "Google UK English Female" or "Microsoft Hazel" or any "en-GB"
+            const ukVoice = voices.find(v => v.lang === 'en-GB' && v.name.includes('Female')) || 
+                            voices.find(v => v.lang === 'en-GB');
+            
+            if (ukVoice) msg.voice = ukVoice;
+            msg.rate = 0.85; // Slightly slower/authoritative
+            msg.pitch = 1.0;
+            
+            // Play a digital "ding" (Frequency beep)
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, ctx.currentTime);
+            osc.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.1);
+
+            window.speechSynthesis.speak(msg);
         }
+
+        // Time Clock
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        }, 1000);
     </script>
 </body>
 </html>
