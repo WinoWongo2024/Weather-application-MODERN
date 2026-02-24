@@ -4,211 +4,151 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ÖestVèl Navigator - AS-20260203-0834</title>
-    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
-    
     <style>
-        :root { 
-            --g-blue: #4285F4; 
-            --g-green: #34a853;
-            --velic-white: #ffffff; 
-        }
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Roboto', sans-serif; overflow: hidden; background: #f8f9fa; }
+        :root { --g-blue: #4285F4; --g-green: #34a853; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Roboto', sans-serif; overflow: hidden; }
 
-        /* Top Real-Time Instruction Card */
-        #instruction-card {
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            background: var(--g-green);
-            color: white;
-            padding: 20px;
-            z-index: 2000;
-            display: none; /* Hidden until nav starts */
+        /* Navigation Banner - Only shows during active nav */
+        #nav-banner {
+            position: absolute; top: 0; left: 0; right: 0;
+            background: var(--g-green); color: white; padding: 20px;
+            z-index: 2000; display: none; align-items: center; gap: 15px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-            display: flex;
-            align-items: center;
-            gap: 15px;
         }
-        #turn-icon { font-size: 2.5rem; font-weight: bold; }
-        #instruction-text { font-size: 1.3rem; font-weight: 600; line-height: 1.2; }
-        #distance-to-turn { font-size: 1rem; opacity: 0.9; display: block; }
 
-        /* Search Bar */
-        #search-container {
-            position: absolute;
-            top: 15px; left: 10px; right: 10px;
-            z-index: 1000;
-            background: white;
-            border-radius: 28px;
-            padding: 5px 15px;
-            display: flex;
-            align-items: center;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-            max-width: 500px; margin: auto;
+        /* Floating Search Card */
+        #search-card {
+            position: absolute; top: 15px; left: 10px; right: 10px;
+            background: white; border-radius: 8px; z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2); max-width: 500px; margin: auto;
         }
-        #search-input { width: 100%; border: none; padding: 12px; font-size: 16px; outline: none; }
+        #search-input { width: 100%; border: none; padding: 15px; font-size: 16px; border-radius: 8px; outline: none; }
+
+        /* Route Selection Panel - Shows after "Find Route" */
+        #route-panel {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            background: white; padding: 20px; z-index: 1500;
+            display: none; border-top-left-radius: 20px; border-top-right-radius: 20px;
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.1); text-align: center;
+        }
 
         #map { height: 100vh; width: 100%; z-index: 1; }
 
-        /* Bottom Status Bar */
-        #bottom-bar {
-            position: absolute;
-            bottom: 0; left: 0; right: 0;
-            background: white;
-            padding: 15px;
-            z-index: 1000;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-top: 1px solid #ddd;
-            display: none;
+        .btn-go {
+            background: var(--g-blue); color: white; border: none;
+            padding: 15px 40px; border-radius: 30px; font-size: 1.2rem;
+            font-weight: bold; cursor: pointer; margin-top: 10px; width: 100%;
         }
 
-        .speedo-circle {
-            position: absolute; bottom: 85px; left: 15px;
-            background: white; border-radius: 50%;
-            width: 70px; height: 70px;
-            display: flex; flex-direction: column;
-            justify-content: center; align-items: center;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-            border: 3px solid var(--g-blue);
-            z-index: 1000;
-        }
+        #results { background: white; max-height: 250px; overflow-y: auto; }
+        .res-item { padding: 15px; border-top: 1px solid #eee; cursor: pointer; }
 
-        #results {
-            position: absolute; top: 75px; left: 10px; right: 10px;
-            background: white; z-index: 3000; border-radius: 8px;
-            max-height: 300px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        .speedo {
+            position: absolute; bottom: 30px; left: 20px;
+            background: white; border-radius: 50%; width: 60px; height: 60px;
+            display: flex; flex-direction: column; justify-content: center;
+            align-items: center; z-index: 1000; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            border: 2px solid var(--g-blue);
         }
-        .res-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div id="instruction-card">
-        <div id="turn-icon">➔</div>
+    <div id="nav-banner">
+        <div style="font-size: 2rem;">↑</div>
         <div>
-            <span id="instruction-text">Head towards your destination</span>
-            <span id="distance-to-turn">Calculating...</span>
+            <span id="inst-text" style="font-weight: bold; font-size: 1.2rem;">Follow Route</span><br>
+            <span id="inst-dist" style="font-size: 0.9rem;">GPS Syncing...</span>
         </div>
     </div>
 
-    <div id="search-container">
-        <input type="text" id="search-input" placeholder="Search ÖestVèl..." oninput="fetchPlaces(this.value)">
+    <div id="search-card">
+        <input type="text" id="search-input" placeholder="Search ÖestVèl..." oninput="getPlaces(this.value)">
+        <div id="results"></div>
     </div>
-    <div id="results"></div>
+
+    <div id="route-panel">
+        <h3 id="dest-name" style="margin: 0 0 5px 0;">Destination</h3>
+        <p id="route-stats" style="color: #666; margin-bottom: 15px;">-- min • -- km</p>
+        <button class="btn-go" onclick="startNavigation()">START NAVIGATION</button>
+    </div>
 
     <div id="map"></div>
 
-    <div class="speedo-circle">
-        <span id="speed-val" style="font-size: 20px; font-weight: 900;">0</span>
-        <span style="font-size: 10px; color: #666;">MPH</span>
-    </div>
-
-    <div id="bottom-bar">
-        <div id="eta-info">
-            <b id="arrival-time">--:--</b><br>
-            <small id="trip-metrics">-- min • -- km</small>
-        </div>
-        <button onclick="location.reload()" style="background:#ea4335; color:white; border:none; padding:10px 20px; border-radius:20px; font-weight:bold;">EXIT</button>
+    <div class="speedo">
+        <b id="speed-val">0</b><br><small>MPH</small>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
 
     <script>
-        let map, userMarker, routingControl;
-        let userLat, userLon;
-        let routeInstructions = [];
-        let isNavigating = false;
+        let map, userMarker, routingControl, routeData;
+        let uLat, uLon;
+        let isNavActive = false;
 
-        // Setup Map
-        map = L.map('map', { zoomControl: false }).setView([51.45, -2.58], 14);
+        map = L.map('map', { zoomControl: false }).setView([51.45, -2.58], 13);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
 
-        userMarker = L.circleMarker([0,0], { radius: 10, color: '#fff', fillColor: '#4285F4', fillOpacity: 1, weight: 3 }).addTo(map);
+        userMarker = L.circleMarker([0,0], { radius: 8, color: '#fff', fillColor: '#4285F4', fillOpacity: 1, weight: 3 }).addTo(map);
 
-        // GPS Tracking
         navigator.geolocation.watchPosition(pos => {
-            userLat = pos.coords.latitude;
-            userLon = pos.coords.longitude;
-            const mph = Math.round((pos.coords.speed || 0) * 2.23694);
-            
-            userMarker.setLatLng([userLat, userLon]);
-            document.getElementById('speed-val').innerText = mph;
+            uLat = pos.coords.latitude; uLon = pos.coords.longitude;
+            userMarker.setLatLng([uLat, uLon]);
+            document.getElementById('speed-val').innerText = Math.round((pos.coords.speed || 0) * 2.23694);
 
-            if (!isNavigating) {
-                map.panTo([userLat, userLon]);
-            } else {
-                updateLiveInstructions();
+            if (isNavActive) {
+                map.setZoom(18); map.panTo([uLat, uLon]);
+                updateInstructions();
             }
         }, null, { enableHighAccuracy: true });
 
-        // Search Logic
-        async function fetchPlaces(q) {
-            if (q.length < 3) { document.getElementById('results').innerHTML = ""; return; }
-            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}&limit=5`);
+        async function getPlaces(q) {
+            const resDiv = document.getElementById('results');
+            if (q.length < 3) { resDiv.innerHTML = ""; return; }
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}&limit=4`);
             const data = await res.json();
-            document.getElementById('results').innerHTML = data.map(i => `
-                <div class="res-item" onclick="initNav(${i.lat}, ${i.lon}, '${i.display_name.split(',')[0]}')">
-                    <b>${i.display_name.split(',')[0]}</b><br><small>${i.display_name}</small>
+            resDiv.innerHTML = data.map(i => `
+                <div class="res-item" onclick="findRoute(${i.lat}, ${i.lon}, '${i.display_name.split(',')[0]}')">
+                    ${i.display_name.split(',')[0]}
                 </div>
             `).join('');
         }
 
-        // Real-Time Navigation Initialization
-        function initNav(dLat, dLon, dName) {
-            isNavigating = true;
+        function findRoute(dLat, dLon, dName) {
             document.getElementById('results').innerHTML = "";
-            document.getElementById('search-container').style.display = "none";
-            document.getElementById('instruction-card').style.display = "flex";
-            document.getElementById('bottom-bar').style.display = "flex";
+            document.getElementById('dest-name').innerText = dName;
+            document.getElementById('route-panel').style.display = "block";
 
             if (routingControl) map.removeControl(routingControl);
 
             routingControl = L.Routing.control({
-                waypoints: [L.latLng(userLat, userLon), L.latLng(dLat, dLon)],
-                router: L.Routing.osrmv1({ serviceUrl: `https://router.project-osrm.org/route/v1` }),
-                lineOptions: { styles: [{ color: '#4285F4', weight: 7, opacity: 0.8 }] },
-                createMarker: function() { return null; }
-            }).on('routesfound', function(e) {
-                const route = e.routes[0];
-                routeInstructions = route.instructions;
-                updateTripMetrics(route.summary);
-                updateLiveInstructions();
-                map.flyTo([userLat, userLon], 18); // Zoom in for "Driving Mode"
+                waypoints: [L.latLng(uLat, uLon), L.latLng(dLat, dLon)],
+                createMarker: () => null,
+                lineOptions: { styles: [{ color: '#4285F4', weight: 6 }] }
+            }).on('routesfound', e => {
+                routeData = e.routes[0];
+                const mins = Math.round(routeData.summary.totalTime / 60);
+                const km = (routeData.summary.totalDistance / 1000).toFixed(1);
+                document.getElementById('route-stats').innerText = `${mins} min (${km} km)`;
             }).addTo(map);
         }
 
-        function updateTripMetrics(summary) {
-            const mins = Math.round(summary.totalTime / 60);
-            const dist = (summary.totalDistance / 1000).toFixed(1);
-            document.getElementById('trip-metrics').innerText = `${mins} min • ${dist} km`;
-            
-            const arrival = new Date();
-            arrival.setMinutes(arrival.getMinutes() + mins);
-            document.getElementById('arrival-time').innerText = arrival.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        function startNavigation() {
+            isNavActive = true;
+            document.getElementById('route-panel').style.display = "none";
+            document.getElementById('search-card').style.display = "none";
+            document.getElementById('nav-banner').style.display = "flex";
+            map.flyTo([uLat, uLon], 18);
         }
 
-        function updateLiveInstructions() {
-            if (routeInstructions.length > 0) {
-                const next = routeInstructions[0];
-                document.getElementById('instruction-text').innerText = next.text;
-                document.getElementById('distance-to-turn').innerText = `In ${Math.round(next.distance)} meters`;
-                
-                // Logic to swap icon based on text
-                if(next.text.toLowerCase().includes("left")) document.getElementById('turn-icon').innerText = "↖";
-                else if(next.text.toLowerCase().includes("right")) document.getElementById('turn-icon').innerText = "↗";
-                else document.getElementById('turn-icon').innerText = "↑";
-
-                // Auto-advance logic: If we are within 20m of the maneuver, pop it
-                if (next.distance < 20) {
-                    routeInstructions.shift();
-                }
-            } else {
-                document.getElementById('instruction-text').innerText = "You have arrived!";
-                document.getElementById('instruction-card').style.background = "#4285F4";
+        function updateInstructions() {
+            if (routeData && routeData.instructions) {
+                const step = routeData.instructions[0];
+                document.getElementById('inst-text').innerText = step.text;
+                document.getElementById('inst-dist').innerText = `In ${Math.round(step.distance)} meters`;
             }
         }
     </script>
