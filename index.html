@@ -2,155 +2,169 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ÖestVèl Navigator - AS-20260203-0834</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <title>ÖestVèl Signal Control - AS-20260203-0834</title>
     <style>
-        :root { --g-blue: #4285F4; --g-green: #34a853; }
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Roboto', sans-serif; overflow: hidden; }
-
-        /* Navigation Banner - Only shows during active nav */
-        #nav-banner {
-            position: absolute; top: 0; left: 0; right: 0;
-            background: var(--g-green); color: white; padding: 20px;
-            z-index: 2000; display: none; align-items: center; gap: 15px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        body { 
+            background: #1a1a1a; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+            font-family: 'Arial', sans-serif;
         }
 
-        /* Floating Search Card */
-        #search-card {
-            position: absolute; top: 15px; left: 10px; right: 10px;
-            background: white; border-radius: 8px; z-index: 1000;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2); max-width: 500px; margin: auto;
-        }
-        #search-input { width: 100%; border: none; padding: 15px; font-size: 16px; border-radius: 8px; outline: none; }
-
-        /* Route Selection Panel - Shows after "Find Route" */
-        #route-panel {
-            position: absolute; bottom: 0; left: 0; right: 0;
-            background: white; padding: 20px; z-index: 1500;
-            display: none; border-top-left-radius: 20px; border-top-right-radius: 20px;
-            box-shadow: 0 -4px 10px rgba(0,0,0,0.1); text-align: center;
+        /* The Signal Post */
+        .signal-housing {
+            width: 180px;
+            background: linear-gradient(145deg, #333, #111);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8), inset 0 2px 5px rgba(255,255,255,0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            border: 2px solid #444;
         }
 
-        #map { height: 100vh; width: 100%; z-index: 1; }
-
-        .btn-go {
-            background: var(--g-blue); color: white; border: none;
-            padding: 15px 40px; border-radius: 30px; font-size: 1.2rem;
-            font-weight: bold; cursor: pointer; margin-top: 10px; width: 100%;
+        /* Lights */
+        .light {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: #222;
+            border: 4px solid #111;
+            box-shadow: inset 0 5px 15px rgba(0,0,0,0.6);
+            transition: all 0.2s ease;
         }
 
-        #results { background: white; max-height: 250px; overflow-y: auto; }
-        .res-item { padding: 15px; border-top: 1px solid #eee; cursor: pointer; }
+        .red.active { background: #ff0000; box-shadow: 0 0 40px #ff0000, inset 0 0 20px #800000; }
+        .amber.active { background: #ffaa00; box-shadow: 0 0 40px #ffaa00, inset 0 0 20px #805500; }
+        .green.active { background: #00ff00; box-shadow: 0 0 40px #00ff00, inset 0 0 20px #008000; }
 
-        .speedo {
-            position: absolute; bottom: 30px; left: 20px;
-            background: white; border-radius: 50%; width: 60px; height: 60px;
-            display: flex; flex-direction: column; justify-content: center;
-            align-items: center; z-index: 1000; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            border: 2px solid var(--g-blue);
+        /* The Pedestrian Button Box */
+        .button-box {
+            margin-top: 30px;
+            width: 120px;
+            height: 150px;
+            background: #f1c40f; /* High visibility yellow */
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: 3px solid #b7950b;
+            box-shadow: 0 10px 0 #917608;
+            transition: transform 0.1s;
         }
+
+        .button-box:active { transform: translateY(5px); box-shadow: 0 5px 0 #917608; }
+
+        .wait-panel {
+            width: 80%;
+            height: 40px;
+            background: #222;
+            color: #444;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 14px;
+            letter-spacing: 2px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .wait-panel.active { color: #f1c40f; text-shadow: 0 0 5px #f1c40f; }
+
+        .round-button {
+            width: 50px;
+            height: 50px;
+            background: #ddd;
+            border-radius: 50%;
+            border: 3px solid #999;
+        }
+
+        .status-text { margin-top: 20px; color: #666; font-size: 12px; }
     </style>
 </head>
 <body>
 
-    <div id="nav-banner">
-        <div style="font-size: 2rem;">↑</div>
-        <div>
-            <span id="inst-text" style="font-weight: bold; font-size: 1.2rem;">Follow Route</span><br>
-            <span id="inst-dist" style="font-size: 0.9rem;">GPS Syncing...</span>
+    <div class="signal-housing">
+        <div id="light-red" class="light red active"></div>
+        <div id="light-amber" class="light amber"></div>
+        <div id="light-green" class="light green"></div>
+
+        <div class="button-box" onclick="requestCross()">
+            <div id="wait-light" class="wait-panel">WAIT</div>
+            <div class="round-button"></div>
         </div>
+        <div class="status-text">REF: AS-20260203-0834</div>
     </div>
-
-    <div id="search-card">
-        <input type="text" id="search-input" placeholder="Search ÖestVèl..." oninput="getPlaces(this.value)">
-        <div id="results"></div>
-    </div>
-
-    <div id="route-panel">
-        <h3 id="dest-name" style="margin: 0 0 5px 0;">Destination</h3>
-        <p id="route-stats" style="color: #666; margin-bottom: 15px;">-- min • -- km</p>
-        <button class="btn-go" onclick="startNavigation()">START NAVIGATION</button>
-    </div>
-
-    <div id="map"></div>
-
-    <div class="speedo">
-        <b id="speed-val">0</b><br><small>MPH</small>
-    </div>
-
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
 
     <script>
-        let map, userMarker, routingControl, routeData;
-        let uLat, uLon;
-        let isNavActive = false;
+        let isWaiting = false;
+        let isSequenceRunning = false;
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-        map = L.map('map', { zoomControl: false }).setView([51.45, -2.58], 13);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
-
-        userMarker = L.circleMarker([0,0], { radius: 8, color: '#fff', fillColor: '#4285F4', fillOpacity: 1, weight: 3 }).addTo(map);
-
-        navigator.geolocation.watchPosition(pos => {
-            uLat = pos.coords.latitude; uLon = pos.coords.longitude;
-            userMarker.setLatLng([uLat, uLon]);
-            document.getElementById('speed-val').innerText = Math.round((pos.coords.speed || 0) * 2.23694);
-
-            if (isNavActive) {
-                map.setZoom(18); map.panTo([uLat, uLon]);
-                updateInstructions();
-            }
-        }, null, { enableHighAccuracy: true });
-
-        async function getPlaces(q) {
-            const resDiv = document.getElementById('results');
-            if (q.length < 3) { resDiv.innerHTML = ""; return; }
-            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}&limit=4`);
-            const data = await res.json();
-            resDiv.innerHTML = data.map(i => `
-                <div class="res-item" onclick="findRoute(${i.lat}, ${i.lon}, '${i.display_name.split(',')[0]}')">
-                    ${i.display_name.split(',')[0]}
-                </div>
-            `).join('');
+        function playBeep(frequency, duration) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
         }
 
-        function findRoute(dLat, dLon, dName) {
-            document.getElementById('results').innerHTML = "";
-            document.getElementById('dest-name').innerText = dName;
-            document.getElementById('route-panel').style.display = "block";
-
-            if (routingControl) map.removeControl(routingControl);
-
-            routingControl = L.Routing.control({
-                waypoints: [L.latLng(uLat, uLon), L.latLng(dLat, dLon)],
-                createMarker: () => null,
-                lineOptions: { styles: [{ color: '#4285F4', weight: 6 }] }
-            }).on('routesfound', e => {
-                routeData = e.routes[0];
-                const mins = Math.round(routeData.summary.totalTime / 60);
-                const km = (routeData.summary.totalDistance / 1000).toFixed(1);
-                document.getElementById('route-stats').innerText = `${mins} min (${km} km)`;
-            }).addTo(map);
+        function setLights(r, a, g) {
+            document.getElementById('light-red').classList.toggle('active', r);
+            document.getElementById('light-amber').classList.toggle('active', a);
+            document.getElementById('light-green').classList.toggle('active', g);
         }
 
-        function startNavigation() {
-            isNavActive = true;
-            document.getElementById('route-panel').style.display = "none";
-            document.getElementById('search-card').style.display = "none";
-            document.getElementById('nav-banner').style.display = "flex";
-            map.flyTo([uLat, uLon], 18);
+        async function requestCross() {
+            if (isWaiting || isSequenceRunning) return;
+            
+            isWaiting = true;
+            document.getElementById('wait-light').classList.add('active');
+            
+            // Simulate the delay for the AI to find a gap in traffic
+            setTimeout(startSequence, 3000);
         }
 
-        function updateInstructions() {
-            if (routeData && routeData.instructions) {
-                const step = routeData.instructions[0];
-                document.getElementById('inst-text').innerText = step.text;
-                document.getElementById('inst-dist').innerText = `In ${Math.round(step.distance)} meters`;
-            }
+        async function startSequence() {
+            isSequenceRunning = true;
+            
+            // Green to Amber
+            setLights(false, true, false);
+            await new Promise(r => setTimeout(r, 2000));
+            
+            // Amber to Red
+            setLights(true, false, false);
+            document.getElementById('wait-light').classList.remove('active');
+            
+            // Pedestrian "Green" Phase (with sound)
+            const beepInterval = setInterval(() => playBeep(880, 0.1), 200);
+            await new Promise(r => setTimeout(r, 5000));
+            
+            clearInterval(beepInterval);
+            
+            // Back to Normal
+            setLights(true, true, false); // Red + Amber
+            await new Promise(r => setTimeout(r, 1500));
+            setLights(false, false, true);
+            
+            isWaiting = false;
+            isSequenceRunning = false;
         }
+
+        // Initialize at Green for traffic
+        setLights(false, false, true);
     </script>
 </body>
 </html>
