@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ÖestVèl Weather Station</title>
+    <style>
+        body { background: #0f0c29; color: #00d2ff; font-family: sans-serif; text-align: center; padding-top: 100px; }
+        .display { border: 2px solid #00d2ff; display: inline-block; padding: 40px; border-radius: 15px; background: rgba(0,0,0,0.5); }
+        h1 { margin: 0; font-size: 1rem; color: #9d9d9d; }
+        .temp { font-size: 5rem; margin: 10px 0; }
+        .tax { color: #ff0055; font-weight: bold; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="display">
+        <h1 id="loc">LOADING ÖESTVÈL DATA...</h1>
+        <div class="temp" id="temp">--°C</div>
+        <div id="cond">--</div>
+        <div class="tax">Heating Levy: <span id="tax">VC€ 0.00</span></div>
+        <div style="font-size: 0.7rem; margin-top:15px; color:#555;" id="updated"></div>
+    </div>
+
+    <script>
+        async function loadWeather() {
+            // Fetch the JSON file from your own domain
+            const res = await fetch('./weather.json?nocache=' + new Date().getTime());
+            const data = await res.json();
+            
+            document.getElementById('loc').innerText = data.location;
+            document.getElementById('temp').innerText = data.temp_c + "°C";
+            document.getElementById('cond').innerText = data.condition;
+            document.getElementById('tax').innerText = data.energy_tax;
+            document.getElementById('updated').innerText = "Last Sync: " + data.last_updated;
+        }
+        loadWeather();
+    </script>
+</body>
+</html>
