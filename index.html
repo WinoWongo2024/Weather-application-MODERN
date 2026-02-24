@@ -2,196 +2,181 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>ÖestVèl High-Detail Signal - AS-20260203-0834</title>
+    <title>ÖestVèl Emergency Response - AS-20260203-0834</title>
     <style>
-        body { 
-            background: #0f0f0f; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            height: 100vh; margin: 0;
-            user-select: none;
+        body { background: #0a0a0a; color: white; font-family: 'Helvetica', sans-serif; display: flex; flex-direction: column; align-items: center; height: 100vh; margin: 0; justify-content: center; }
+        
+        /* Control Panel */
+        .console {
+            width: 350px;
+            background: #1c1c1c;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #333;
+            box-shadow: 0 0 30px rgba(0,0,0,1);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
         }
 
-        /* High-Detail Signal Housing */
-        .housing {
-            width: 200px;
-            background: linear-gradient(to bottom, #333 0%, #1a1a1a 100%);
-            padding: 40px 20px;
-            border-radius: 40px;
-            border: 4px solid #444;
-            box-shadow: 20px 20px 60px #050505, -5px -5px 20px #222;
+        .header { grid-column: span 2; text-align: center; border-bottom: 1px solid #444; padding-bottom: 10px; color: #007bff; font-size: 12px; letter-spacing: 1px; }
+
+        /* Buttons */
+        .btn {
+            height: 60px;
+            background: #2a2a2a;
+            border: 2px solid #444;
+            border-radius: 5px;
+            color: #888;
+            font-weight: bold;
             display: flex;
-            flex-direction: column;
-            gap: 25px;
-            position: relative;
-        }
-
-        /* Lens Detailing */
-        .light {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            background: #111;
-            position: relative;
-            border: 8px solid #000;
-            overflow: hidden;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.9);
-        }
-
-        /* Fresnel Lens Effect */
-        .light::after {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: repeating-radial-gradient(circle, transparent 0, transparent 5px, rgba(0,0,0,0.3) 6px);
-            pointer-events: none;
-        }
-
-        /* Active States */
-        .red.active { background: #ff0000; box-shadow: 0 0 60px #ff0000, inset 0 0 30px #4d0000; }
-        .orange.active { background: #ff8c00; box-shadow: 0 0 60px #ff8c00, inset 0 0 30px #4d2a00; }
-        .green.active { background: #00ff22; box-shadow: 0 0 60px #00ff22, inset 0 0 30px #004d0b; }
-
-        /* The Button Unit */
-        .btn-unit {
-            margin-top: 30px;
-            width: 140px;
-            height: 160px;
-            background: #e67e22; /* ÖestVèl Orange-Yellow */
-            border-radius: 15px;
-            border: 4px solid #222;
-            display: flex;
-            flex-direction: column;
             align-items: center;
-            padding: 10px;
+            justify-content: center;
             cursor: pointer;
+            transition: 0.1s;
+            text-align: center;
+            font-size: 14px;
         }
 
-        .wait-display {
-            width: 90%;
+        .btn:active { transform: scale(0.95); }
+        .btn.active-blue { background: #0056b3; color: white; border-color: #007bff; box-shadow: 0 0 15px rgba(0,123,255,0.5); }
+        .btn.active-red { background: #b30000; color: white; border-color: #ff0000; box-shadow: 0 0 15px rgba(255,0,0,0.5); }
+        .btn.active-amber { background: #b37400; color: white; border-color: #ffaa00; box-shadow: 0 0 15px rgba(255,170,0,0.5); }
+
+        /* The Visualizer */
+        .lightbar-preview {
+            grid-column: span 2;
             height: 40px;
             background: #000;
-            color: #222;
             display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: 'Courier New', monospace;
-            font-weight: bold;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            transition: 0.1s;
+            border-radius: 20px;
+            overflow: hidden;
+            margin-bottom: 10px;
+            border: 2px solid #333;
         }
 
-        .wait-display.active { color: #ff0000; text-shadow: 0 0 10px #ff0000; }
+        .led { flex: 1; height: 100%; opacity: 0.1; transition: 0.05s; }
+        .led.blue { background: #007bff; }
+        .led.red { background: #ff0000; }
+        .led.amber { background: #ffaa00; }
+        .led.on { opacity: 1; box-shadow: inset 0 0 10px white; }
 
-        .press-btn {
-            width: 60px;
-            height: 60px;
-            background: #ccc;
-            border-radius: 50%;
-            border: 4px solid #666;
-            box-shadow: inset 0 4px 0 #fff, 0 4px 0 #444;
-        }
-
-        .press-btn:active { transform: translateY(2px); box-shadow: none; }
+        .siren-active { animation: blink-text 0.5s infinite; color: #ff0000; }
+        @keyframes blink-text { 50% { opacity: 0; } }
     </style>
 </head>
 <body>
 
-    <div class="housing">
-        <div id="L-RED" class="light red active"></div>
-        <div id="L-ORG" class="light orange"></div>
-        <div id="L-GRN" class="light green"></div>
+    <div class="console">
+        <div class="header">SYSTEM AS-20260203-0834 // ÖESTVÈL POLICE CONTROL</div>
 
-        <div class="btn-unit" onclick="triggerSequence()">
-            <div id="WAIT" class="wait-display">WAIT</div>
-            <div class="press-btn"></div>
+        <div class="lightbar-preview" id="preview">
+            <div class="led blue"></div><div class="led blue"></div>
+            <div class="led blue"></div><div class="led blue"></div>
+            <div class="led red"></div><div class="led red"></div>
+            <div class="led blue"></div><div class="led blue"></div>
+            <div class="led blue"></div><div class="led blue"></div>
         </div>
+
+        <div class="btn" id="btn-blues" onclick="toggleMode('blues', 'active-blue')">999 BLUES</div>
+        <div class="btn" id="btn-rear" onclick="toggleMode('rear', 'active-amber')">REAR AMBER</div>
+        <div class="btn" id="btn-wail" onclick="toggleSiren('WAIL')">SIREN WAIL</div>
+        <div class="btn" id="btn-yelp" onclick="toggleSiren('YELP')">SIREN YELP</div>
+        <div class="btn" id="btn-bull" onclick="playBullhorn()">BULLHORN</div>
+        <div class="btn active-red" onclick="allOff()">ALL OFF</div>
     </div>
 
     <script>
-        const lights = {
-            red: document.getElementById('L-RED'),
-            org: document.getElementById('L-ORG'),
-            grn: document.getElementById('L-GRN'),
-            wait: document.getElementById('WAIT')
-        };
-
-        let running = false;
+        let modes = { blues: false, rear: false, siren: null };
+        const leds = document.querySelectorAll('.led');
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let sirenInterval = null;
 
-        function beep(freq, dur) {
+        function toggleMode(mode, cssClass) {
+            modes[mode] = !modes[mode];
+            document.getElementById(`btn-${mode}`).classList.toggle(cssClass);
+            if(mode === 'blues') runFlashPattern();
+        }
+
+        function runFlashPattern() {
+            if(!modes.blues && !modes.rear) {
+                leds.forEach(l => l.classList.remove('on'));
+                return;
+            }
+
+            let step = 0;
+            const pattern = setInterval(() => {
+                if(!modes.blues && !modes.rear) { clearInterval(pattern); return; }
+                
+                leds.forEach((l, i) => {
+                    l.classList.remove('on');
+                    if(modes.blues) {
+                        // High-speed Quad Flash pattern
+                        if(step < 4 && i < 4) l.classList.add('on');
+                        if(step >= 4 && step < 8 && i >= 6) l.classList.add('on');
+                    }
+                    if(modes.rear && i === 4 || i === 5) {
+                        if(step % 2 === 0) l.classList.add('on');
+                    }
+                });
+                step = (step + 1) % 8;
+            }, 80);
+        }
+
+        function toggleSiren(type) {
+            if(modes.siren === type) {
+                modes.siren = null;
+                stopSiren();
+            } else {
+                modes.siren = type;
+                startSiren(type);
+            }
+        }
+
+        function startSiren(type) {
+            stopSiren();
             const osc = audioCtx.createOscillator();
-            const g = audioCtx.createGain();
-            osc.connect(g); g.connect(audioCtx.destination);
-            osc.frequency.value = freq; g.gain.value = 0.05;
-            osc.start(); osc.stop(audioCtx.currentTime + dur);
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            gain.gain.value = 0.1;
+            
+            osc.type = 'triangle';
+            osc.start();
+
+            let t = 0;
+            sirenInterval = setInterval(() => {
+                t += 0.05;
+                let freq = (type === 'WAIL') 
+                    ? 600 + Math.sin(t * 2) * 200 
+                    : 600 + Math.sin(t * 10) * 200;
+                osc.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.05);
+            }, 50);
+            
+            modes.currentOsc = osc;
         }
 
-        function set(r, o, g) {
-            lights.red.classList.toggle('active', r);
-            lights.org.classList.toggle('active', o);
-            lights.grn.classList.toggle('active', g);
-        }
-
-        async function flashOrange(times, speed) {
-            for(let i=0; i<times; i++) {
-                lights.org.classList.add('active');
-                await new Promise(r => setTimeout(r, speed));
-                lights.org.classList.remove('active');
-                await new Promise(r => setTimeout(r, speed));
+        function stopSiren() {
+            if(modes.currentOsc) {
+                modes.currentOsc.stop();
+                clearInterval(sirenInterval);
             }
         }
 
-        async function triggerSequence() {
-            if(running) return;
-            running = true;
-            
-            // 1. Initial State: Green
-            set(false, false, true);
-            lights.wait.classList.add('active');
-            beep(440, 0.1); // Click sound
-            
-            await new Promise(r => setTimeout(r, 2000));
-
-            // 2. GREEN -> RED Transition
-            // Green -> Orange Flashing -> Red (2x Flash)
-            set(false, false, true); 
-            await new Promise(r => setTimeout(r, 1000));
-            set(false, false, false); 
-            await flashOrange(4, 250); // Orange Flashing
-            
-            // Red (Double Flash) then Solid
-            for(let i=0; i<2; i++) {
-                set(true, false, false); await new Promise(r => setTimeout(r, 200));
-                set(false, false, false); await new Promise(r => setTimeout(r, 200));
-            }
-            set(true, false, false);
-            lights.wait.classList.remove('active');
-
-            // 3. Pedestrian "Walk" Phase
-            const walkSnd = setInterval(() => beep(1000, 0.05), 150);
-            await new Promise(r => setTimeout(r, 5000));
-            clearInterval(walkSnd);
-
-            // 4. RED -> GREEN Transition
-            // Red -> Red + Orange Flashing -> Green
-            lights.red.classList.add('active');
-            // Flash orange while red is still on
-            for(let i=0; i<3; i++) {
-                lights.org.classList.add('active');
-                await new Promise(r => setTimeout(r, 300));
-                lights.org.classList.remove('active');
-                await new Promise(r => setTimeout(r, 300));
-            }
-            
-            set(false, false, true); // Final Green
-            running = false;
+        function playBullhorn() {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.value = 120;
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            gain.gain.value = 0.2;
+            osc.start(); osc.stop(audioCtx.currentTime + 0.3);
         }
 
-        // Boot state
-        set(false, false, true);
+        function allOff() {
+            modes = { blues: false, rear: false, siren: null };
+            document.querySelectorAll('.btn').forEach(b => b.classList.remove('active-blue', 'active-amber'));
+            stopSiren();
+        }
     </script>
 </body>
 </html>
