@@ -3,169 +3,192 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ÖestVèl Nav - AS-20260203-0834</title>
+    <title>ÖestVèl Maps - AS-20260203-0834</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
-            --velic-purple: #6a0dad;
-            --deep-blue: #0a0c1f;
-            --neon-pink: #ff00ff;
-            --white: #ffffff;
+            --google-blue: #4285F4;
+            --velic-pink: #d600d6;
         }
 
-        body, html { margin: 0; padding: 0; height: 100%; background: #000; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Roboto', Arial, sans-serif; overflow: hidden; }
 
-        /* Top Banner */
-        #road-banner {
+        /* Floating Search Bar */
+        #search-container {
             position: absolute;
-            top: 0; width: 100%;
-            background: rgba(10, 12, 31, 0.9);
-            color: var(--white);
-            padding: 15px;
-            text-align: center;
-            border-bottom: 2px solid var(--neon-pink);
+            top: 10px; left: 10px; right: 10px;
             z-index: 1000;
-        }
-        #road-name { font-size: 1.4rem; font-weight: 800; display: block; text-transform: uppercase; }
-        #country-name { font-size: 0.9rem; color: var(--neon-pink); letter-spacing: 2px; }
-
-        #map { height: 100vh; width: 100%; }
-
-        /* Speedometer Overlay */
-        #speed-container {
-            position: absolute;
-            bottom: 40px;
-            left: 20px;
-            width: 120px;
-            height: 120px;
-            background: rgba(0,0,0,0.7);
-            border-radius: 50%;
-            border: 4px solid var(--neon-pink);
+            max-width: 400px;
             display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            box-shadow: 0 0 15px var(--neon-pink);
-        }
-        #speed-value { font-size: 2.2rem; font-weight: 900; color: var(--white); margin: 0; }
-        #speed-unit { font-size: 0.8rem; color: var(--neon-pink); margin-top: -5px; }
-
-        /* Travel Cost Overlay */
-        #cost-overlay {
-            position: absolute;
-            bottom: 40px;
-            right: 20px;
-            background: var(--white);
-            color: var(--deep-blue);
-            padding: 10px 20px;
-            border-radius: 30px;
-            font-weight: 900;
-            z-index: 1000;
-        }
-
-        #start-screen {
-            position: fixed;
-            inset: 0;
-            background: var(--deep-blue);
-            z-index: 9999;
-            display: flex;
-            justify-content: center;
+            background: white;
+            padding: 5px 15px;
+            border-radius: 24px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
             align-items: center;
         }
-        .btn-init {
-            padding: 20px 50px;
-            background: var(--neon-pink);
-            color: white;
-            font-size: 1.5rem;
+
+        #search-input {
             border: none;
-            border-radius: 50px;
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            outline: none;
+        }
+
+        #search-btn {
+            background: none;
+            border: none;
             cursor: pointer;
-            box-shadow: 0 0 20px var(--neon-pink);
+            font-size: 20px;
+        }
+
+        #map { height: 100vh; width: 100%; z-index: 1; }
+
+        /* Google-style Speedo Overlay */
+        #speedo {
+            position: absolute;
+            bottom: 30px; left: 20px;
+            background: white;
+            padding: 10px 15px;
+            border-radius: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            z-index: 1000;
+            text-align: center;
+            min-width: 80px;
+        }
+
+        #speed-val { font-size: 24px; font-weight: bold; color: #333; display: block; }
+        #speed-unit { font-size: 12px; color: #666; font-weight: bold; }
+
+        /* Current Road Banner (Bottom) */
+        #road-info {
+            position: absolute;
+            bottom: 30px; left: 50%;
+            transform: translateX(-50%);
+            background: var(--google-blue);
+            color: white;
+            padding: 12px 25px;
+            border-radius: 30px;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            z-index: 1000;
+            white-space: nowrap;
+        }
+
+        /* "Center on Me" Button */
+        #locate-btn {
+            position: absolute;
+            bottom: 100px; right: 20px;
+            background: white;
+            width: 50px; height: 50px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            z-index: 1000;
+            cursor: pointer;
+            font-size: 24px;
         }
     </style>
 </head>
 <body>
 
-    <div id="start-screen">
-        <button class="btn-init" onclick="launchNav()">ENGAGE NAV</button>
-    </div>
-
-    <div id="road-banner">
-        <span id="road-name">Locating Road...</span>
-        <span id="country-name">ÖESTVÈL TERRITORY</span>
+    <div id="search-container">
+        <input type="text" id="search-input" placeholder="Search ÖestVèl territory...">
+        <button id="search-btn" onclick="searchPlace()">🔍</button>
     </div>
 
     <div id="map"></div>
 
-    <div id="speed-container">
-        <p id="speed-value">0</p>
-        <p id="speed-unit">MPH</p>
+    <div id="locate-btn" onclick="centerMap()">📍</div>
+
+    <div id="speedo">
+        <span id="speed-val">0</span>
+        <span id="speed-unit">MPH</span>
     </div>
 
-    <div id="cost-overlay">VC€ 0.00</div>
+    <div id="road-info">Navigating...</div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        let map, userMarker, pathLine;
-        let points = 0;
+        let map, userMarker, pathTrace;
+        let userLat = 51.4545, userLon = -2.5879; // Default Bristol
 
-        function launchNav() {
-            document.getElementById('start-screen').style.display = 'none';
+        // Initialize
+        function initMap() {
+            map = L.map('map', { zoomControl: false }).setView([userLat, userLon], 15);
             
-            map = L.map('map', { zoomControl: false }).setView([51.43, -2.54], 16);
-            
-            // High-contrast Dark Map
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
-
-            userMarker = L.circleMarker([0, 0], { 
-                color: '#ff00ff', 
-                fillColor: '#ffffff', 
-                fillOpacity: 1, 
-                radius: 8 
+            // "Silver" Google Style Tiles (using CartoDB Voyager)
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                attribution: '©OpenStreetMap'
             }).addTo(map);
 
-            pathLine = L.polyline([], { color: '#ff00ff', weight: 4, opacity: 0.6 }).addTo(map);
+            userMarker = L.circleMarker([userLat, userLon], {
+                radius: 10,
+                color: '#fff',
+                fillColor: '#4285F4',
+                fillOpacity: 1,
+                weight: 3
+            }).addTo(map);
+
+            pathTrace = L.polyline([], { color: '#4285F4', weight: 5, opacity: 0.5 }).addTo(map);
 
             if (navigator.geolocation) {
-                navigator.geolocation.watchPosition(handlePosition, null, { 
-                    enableHighAccuracy: true 
-                });
+                navigator.geolocation.watchPosition(updatePos, null, { enableHighAccuracy: true });
             }
         }
 
-        async function handlePosition(pos) {
-            const { latitude, longitude, speed } = pos.coords;
-            const latlng = [latitude, longitude];
+        function updatePos(pos) {
+            userLat = pos.coords.latitude;
+            userLon = pos.coords.longitude;
+            const speedMps = pos.coords.speed || 0;
+            const mph = Math.round(speedMps * 2.23694);
 
-            // Update visuals
-            map.panTo(latlng);
+            const latlng = [userLat, userLon];
             userMarker.setLatLng(latlng);
-            pathLine.addLatLng(latlng);
+            pathTrace.addLatLng(latlng);
+            
+            // Smoothly pan map like Google
+            map.panTo(latlng);
 
-            // Speed conversion (m/s to mph)
-            const mph = speed ? Math.round(speed * 2.23694) : 0;
-            document.getElementById('speed-value').innerText = mph;
-
-            // Fake Travel Cost
-            points++;
-            document.getElementById('cost-overlay').innerText = `VC€ ${(points * 0.08).toFixed(2)}`;
-
-            // Reverse Geocode (Get Road Name)
-            if (points % 5 === 0) { // Only check every 5 updates to save data/API limits
-                try {
-                    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-                    const data = await response.json();
-                    const road = data.address.road || data.address.suburb || "Main Road";
-                    const country = data.address.country || "ÖestVèl";
-                    
-                    document.getElementById('road-name').innerText = road;
-                    document.getElementById('country-name').innerText = country.toUpperCase();
-                } catch (e) {
-                    console.log("Geocoding delay...");
-                }
-            }
+            document.getElementById('speed-val').innerText = mph;
+            
+            // Reverse Geocode for Road Name
+            getRoadName(userLat, userLon);
         }
+
+        async function getRoadName(lat, lon) {
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+                const data = await res.json();
+                const road = data.address.road || data.address.suburb || "Unnamed Road";
+                const country = data.address.country || "ÖestVèl";
+                document.getElementById('road-info').innerText = `${road}, ${country}`;
+            } catch (e) {}
+        }
+
+        async function searchPlace() {
+            const query = document.getElementById('search-input').value;
+            if (!query) return;
+
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`);
+                const data = await res.json();
+                if (data.length > 0) {
+                    const first = data[0];
+                    map.flyTo([first.lat, first.lon], 16);
+                    L.marker([first.lat, first.lon]).addTo(map)
+                        .bindPopup(first.display_name).openPopup();
+                }
+            } catch (e) { alert("Place not found in the Kingdom."); }
+        }
+
+        function centerMap() {
+            map.flyTo([userLat, userLon], 17);
+        }
+
+        window.onload = initMap;
     </script>
 </body>
 </html>
