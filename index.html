@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>X39 Simulator - AS-20260203-0834</title>
+    <title>X39 Full Route - AS-20260203-0834</title>
     <style>
         :root {
-            --bus-purple: #161a3d;
+            --bus-blue: #161a3d;
             --pink: #d600d6;
             --yellow: #ffcc00;
             --white: #ffffff;
@@ -22,16 +22,17 @@
             align-items: center;
             height: 100vh;
             justify-content: center;
+            overflow: hidden;
         }
 
         #display-frame {
             width: 95vw;
             max-width: 500px;
-            background-color: var(--bus-purple);
-            padding: 25px;
+            background-color: var(--bus-blue);
+            padding: 20px;
             box-sizing: border-box;
-            border-radius: 8px;
-            position: relative;
+            border-radius: 12px;
+            border: 3px solid #333;
         }
 
         .top-bar {
@@ -39,14 +40,14 @@
             justify-content: space-between;
             color: var(--pink);
             font-weight: bold;
-            font-size: 1.2rem;
-            margin-bottom: 20px;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
         }
 
         .main-content {
             display: flex;
-            gap: 20px;
-            min-height: 200px;
+            gap: 15px;
+            min-height: 180px;
         }
 
         .line-art {
@@ -56,8 +57,8 @@
         }
 
         .circle {
-            width: 22px;
-            height: 22px;
+            width: 20px;
+            height: 20px;
             background: var(--pink);
             border-radius: 50%;
             box-shadow: 0 0 10px var(--pink);
@@ -66,74 +67,81 @@
         .track {
             width: 6px;
             flex-grow: 1;
-            background: #555;
+            background: #ffffff33;
         }
 
         .stop-text-area { flex-grow: 1; }
 
         .current-stop-name {
-            font-size: 2.2rem;
+            font-size: 2rem;
             font-weight: 900;
             margin: 0;
             line-height: 1.1;
+            text-transform: uppercase;
         }
 
         .status-sub {
             color: var(--yellow);
-            font-size: 1.1rem;
-            margin-top: 8px;
+            font-size: 1rem;
+            margin-top: 5px;
             font-weight: bold;
         }
 
         .next-label {
-            margin-top: 30px;
-            font-size: 1.3rem;
-            opacity: 0.5;
+            margin-top: 25px;
+            font-size: 1.2rem;
+            opacity: 0.6;
         }
 
         #requested-banner {
-            background: #ff4400;
+            background: #cc0000;
             color: white;
             text-align: center;
             font-weight: bold;
-            padding: 5px;
+            padding: 8px;
             visibility: hidden;
-            margin-top: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
         }
 
         .dest-footer {
             margin-top: 20px;
             background: white;
-            color: var(--bus-purple);
+            color: var(--bus-blue);
             text-align: center;
-            font-size: 1.8rem;
+            font-size: 1.6rem;
             font-weight: 900;
             padding: 5px;
+            letter-spacing: 2px;
         }
 
         .controls {
-            margin-top: 20px;
-            display: flex;
+            margin-top: 15px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 10px;
-            flex-wrap: wrap;
-            justify-content: center;
+            width: 95vw;
+            max-width: 500px;
         }
 
         button {
-            padding: 12px 20px;
+            padding: 15px;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             font-weight: bold;
             cursor: pointer;
+            font-size: 0.9rem;
         }
 
-        .btn-start { background: var(--pink); color: white; }
+        .btn-start { background: var(--pink); color: white; grid-column: span 2; }
         .btn-request { background: #ff4400; color: white; }
+        .btn-skip { background: #444; color: white; }
         
-        #gps-stats {
-            color: #666;
-            font-size: 0.8rem;
-            margin-top: 10px;
+        #gps-debug {
+            color: #444;
+            font-size: 0.7rem;
+            margin-top: 8px;
             font-family: monospace;
         }
     </style>
@@ -141,22 +149,22 @@
 <body>
 
     <div id="display-frame">
+        <div id="requested-banner">STOP REQUESTED</div>
+        
         <div class="top-bar">
             <span id="time-now">--:--</span>
             <span>X39 BRISTOL EXPRESS</span>
         </div>
 
-        <div id="requested-banner">STOP REQUESTED</div>
-
         <div class="main-content">
             <div class="line-art">
                 <div class="circle"></div>
                 <div class="track"></div>
-                <div class="circle" style="background: #444; box-shadow: none;"></div>
+                <div class="circle" style="background: #333; box-shadow: none;"></div>
             </div>
             <div class="stop-text-area">
-                <h1 id="curr-stop" class="current-stop-name">Awaiting GPS</h1>
-                <div id="curr-status" class="status-sub">Searching for location...</div>
+                <h1 id="curr-stop" class="current-stop-name">READY</h1>
+                <div id="curr-status" class="status-sub">Press Start to Track GPS</div>
                 
                 <div class="next-label">Next: <span id="next-stop">---</span></div>
             </div>
@@ -166,53 +174,66 @@
     </div>
 
     <div class="controls">
-        <button class="btn-start" onclick="initApp()">START SYSTEM</button>
-        <button class="btn-request" onclick="requestStop()">DING</button>
+        <button class="btn-start" onclick="initApp()">START GPS TRACKING</button>
+        <button class="btn-request" onclick="requestStop()">DING (REQUEST)</button>
+        <button class="btn-skip" onclick="manualSkip()">FORCE NEXT STOP</button>
     </div>
 
-    <div id="gps-stats">Lat: 0.0000 | Lon: 0.0000</div>
+    <div id="gps-debug">Waiting for coordinates...</div>
 
     <script>
         const STOPS = [
-            { name: "Bath Bus Station", lat: 51.3797, lon: -2.3585, msg: "Terminus" },
+            { name: "Bath Bus Station", lat: 51.3797, lon: -2.3585, msg: "Connections to Rail" },
             { name: "Windsor Villas", lat: 51.3854, lon: -2.3831, msg: "Lower Weston" },
+            { name: "Chelsea Road", lat: 51.3885, lon: -2.3925, msg: "Station Road" },
+            { name: "Charmouth Road", lat: 51.3912, lon: -2.4012, msg: "Newbridge" },
             { name: "The Globe", lat: 51.3965, lon: -2.4312, msg: "Newton St Loe" },
+            { name: "Corston", lat: 51.3978, lon: -2.4435, msg: "A4 Main Road" },
             { name: "Saltford", lat: 51.4022, lon: -2.4515, msg: "The Shallows" },
+            { name: "Grange Road", lat: 51.4055, lon: -2.4680, msg: "Saltford West" },
             { name: "Ellsbridge House", lat: 51.4115, lon: -2.4851, msg: "Keynsham" },
-            { name: "Brislington Square", lat: 51.4345, lon: -2.5512, msg: "STOP CLOSED - ROADWORKS", closed: true },
-            { name: "Temple Meads Stn", lat: 51.4497, lon: -2.5812, msg: "Rail Connections" },
-            { name: "Bristol Bus Station", lat: 51.4592, lon: -2.5932, msg: "End of Journey" }
+            { name: "The Talbot", lat: 51.4185, lon: -2.5055, msg: "Keynsham Bypass" },
+            { name: "Hicks Gate", lat: 51.4245, lon: -2.5215, msg: "A4 Roundabout" },
+            { name: "Brislington Square", lat: 51.4345, lon: -2.5512, msg: "STOP CLOSED", closed: true },
+            { name: "Arnos Vale", lat: 51.4423, lon: -2.5658, msg: "Cemetery Gates" },
+            { name: "Totterdown Bridge", lat: 51.4455, lon: -2.5750, msg: "A4 Bath Road" },
+            { name: "Temple Meads Stn", lat: 51.4497, lon: -2.5812, msg: "Station Approach" },
+            { name: "Bristol Bus Station", lat: 51.4592, lon: -2.5932, msg: "Terminus" }
         ];
 
         let activeIndex = -1;
 
         function initApp() {
-            announce("System active. Monitoring route to Bristol.");
+            announce("X39 Service to Bristol. GPS active.");
             if (navigator.geolocation) {
                 navigator.geolocation.watchPosition(pos => {
                     const { latitude, longitude } = pos.coords;
-                    document.getElementById('gps-stats').innerText = `Lat: ${latitude.toFixed(4)} | Lon: ${longitude.toFixed(4)}`;
+                    document.getElementById('gps-debug').innerText = `Live: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
                     checkProximity(latitude, longitude);
-                }, null, { enableHighAccuracy: true });
+                }, null, { enableHighAccuracy: true, maximumAge: 0 });
             }
         }
 
         function checkProximity(lat, lon) {
             STOPS.forEach((stop, i) => {
-                // Calculate distance using simple Pythagoras (fine for small areas)
                 const dist = Math.sqrt(Math.pow(lat - stop.lat, 2) + Math.pow(lon - stop.lon, 2));
-                
-                // Trigger if within ~500 meters (0.005)
-                if (dist < 0.005 && activeIndex !== i) {
+                // Increased radius to 0.006 (~600 meters) for Express speeds
+                if (dist < 0.006 && activeIndex !== i) {
                     activeIndex = i;
                     updateUI(i);
                 }
             });
         }
 
+        function manualSkip() {
+            activeIndex++;
+            if(activeIndex >= STOPS.length) activeIndex = 0;
+            updateUI(activeIndex);
+        }
+
         function updateUI(i) {
             const stop = STOPS[i];
-            const next = STOPS[i+1] || { name: "Terminus" };
+            const next = STOPS[i+1] || { name: "End of Route" };
             
             document.getElementById('curr-stop').innerText = stop.name;
             document.getElementById('curr-status').innerText = stop.msg;
@@ -221,7 +242,7 @@
 
             if (stop.closed) {
                 document.getElementById('curr-stop').style.textDecoration = "line-through";
-                announce(`Next stop, ${stop.name}. This stop is closed. Please use the next stop.`);
+                announce(`Next stop, ${stop.name}. This stop is currently closed.`);
             } else {
                 document.getElementById('curr-stop').style.textDecoration = "none";
                 announce(`Next stop, ${stop.name}. ${stop.msg}`);
@@ -230,26 +251,26 @@
 
         function requestStop() {
             document.getElementById('requested-banner').style.visibility = "visible";
-            // The Bus "Ding"
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const osc = audioCtx.createOscillator();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
             const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(850, audioCtx.currentTime);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.start();
-            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
-            osc.stop(audioCtx.currentTime + 0.5);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+            osc.stop(audioCtx.currentTime + 0.4);
         }
 
         function announce(text) {
             window.speechSynthesis.cancel();
             const utter = new SpeechSynthesisUtterance(text);
             const voices = window.speechSynthesis.getVoices();
-            // Look for a British Female voice
-            utter.voice = voices.find(v => v.lang.includes('GB') && v.name.includes('Female')) || voices.find(v => v.lang.includes('GB'));
-            utter.rate = 0.9;
+            // Force British Female Voice if possible
+            const target = voices.find(v => v.lang.includes('GB') && (v.name.includes('Female') || v.name.includes('Serena') || v.name.includes('Google'))) || voices.find(v => v.lang.includes('GB'));
+            if(target) utter.voice = target;
+            utter.rate = 0.88; 
             window.speechSynthesis.speak(utter);
         }
 
