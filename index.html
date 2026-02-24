@@ -1,37 +1,226 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>ÖestVèl Weather Station</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>X39 ÖestVèl Express Simulator</title>
     <style>
-        body { background: #0f0c29; color: #00d2ff; font-family: sans-serif; text-align: center; padding-top: 100px; }
-        .display { border: 2px solid #00d2ff; display: inline-block; padding: 40px; border-radius: 15px; background: rgba(0,0,0,0.5); }
-        h1 { margin: 0; font-size: 1rem; color: #9d9d9d; }
-        .temp { font-size: 5rem; margin: 10px 0; }
-        .tax { color: #ff0055; font-weight: bold; margin-top: 20px; }
+        :root {
+            --display-blue: #1a1a4d;
+            --highlight-pink: #ff00ff;
+            --alert-yellow: #ffcc00;
+        }
+
+        body {
+            background-color: #000;
+            color: white;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        #bus-display {
+            width: 95%;
+            max-width: 500px;
+            background-color: var(--display-blue);
+            border-radius: 12px;
+            padding: 25px;
+            border: 2px solid #333;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            color: var(--highlight-pink);
+            font-weight: bold;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+
+        .route-visual {
+            display: flex;
+            gap: 20px;
+        }
+
+        .line-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .node {
+            width: 18px;
+            height: 18px;
+            background: var(--highlight-pink);
+            border-radius: 50%;
+            z-index: 2;
+        }
+
+        .connector {
+            width: 6px;
+            height: 80px;
+            background: #ffffff55;
+            margin: -2px 0;
+        }
+
+        .stop-info {
+            flex-grow: 1;
+        }
+
+        .stop-box {
+            height: 100px;
+        }
+
+        .stop-name {
+            font-size: 1.9rem;
+            font-weight: 800;
+            line-height: 1.2;
+        }
+
+        .closed-text {
+            text-decoration: line-through;
+            opacity: 0.7;
+        }
+
+        .status-alert {
+            color: var(--alert-yellow);
+            font-size: 1rem;
+            margin-top: 5px;
+            font-weight: 500;
+        }
+
+        .footer-banner {
+            margin-top: 30px;
+            background: #fff;
+            color: var(--display-blue);
+            text-align: center;
+            padding: 8px;
+            font-size: 1.5rem;
+            font-weight: 900;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        #start-btn {
+            margin-top: 20px;
+            padding: 15px 30px;
+            background: var(--highlight-pink);
+            border: none;
+            color: white;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
-    <div class="display">
-        <h1 id="loc">LOADING ÖESTVÈL DATA...</h1>
-        <div class="temp" id="temp">--°C</div>
-        <div id="cond">--</div>
-        <div class="tax">Heating Levy: <span id="tax">VC€ 0.00</span></div>
-        <div style="font-size: 0.7rem; margin-top:15px; color:#555;" id="updated"></div>
+
+    <div id="bus-display">
+        <div class="header">
+            <span id="clock">--:--</span>
+            <span>X39 BRISTOL EXPRESS</span>
+        </div>
+
+        <div class="route-visual">
+            <div class="line-container">
+                <div class="node"></div>
+                <div class="connector"></div>
+                <div class="node" style="background: #666;"></div>
+            </div>
+            <div class="stop-info">
+                <div class="stop-box">
+                    <div id="display-name" class="stop-name">Awaiting GPS</div>
+                    <div id="display-status" class="status-alert">Press Start to Track</div>
+                </div>
+                <div class="stop-box">
+                    <div id="next-name" class="stop-name" style="font-size: 1.2rem; opacity: 0.5;">---</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-banner" id="destination-label">BRISTOL</div>
     </div>
 
+    <button id="start-btn" onclick="initSimulator()">START TRACKING</button>
+
     <script>
-        async function loadWeather() {
-            // Fetch the JSON file from your own domain
-            const res = await fetch('./weather.json?nocache=' + new Date().getTime());
-            const data = await res.json();
-            
-            document.getElementById('loc').innerText = data.location;
-            document.getElementById('temp').innerText = data.temp_c + "°C";
-            document.getElementById('cond').innerText = data.condition;
-            document.getElementById('tax').innerText = data.energy_tax;
-            document.getElementById('updated').innerText = "Last Sync: " + data.last_updated;
+        const STOPS = [
+            { name: "Bath Bus Station", lat: 51.3797, lon: -2.3585, closed: false, msg: "Terminus" },
+            { name: "Windsor Villas", lat: 51.3854, lon: -2.3831, closed: false, msg: "Lower Weston" },
+            { name: "Charmouth Road", lat: 51.3912, lon: -2.4012, closed: false, msg: "Newbridge" },
+            { name: "The Globe", lat: 51.3965, lon: -2.4312, closed: false, msg: "Newton St Loe" },
+            { name: "Saltford", lat: 51.4022, lon: -2.4515, closed: false, msg: "The Shallows" },
+            { name: "Ellsbridge House", lat: 51.4115, lon: -2.4851, closed: false, msg: "Keynsham" },
+            { name: "Brislington Square", lat: 51.4345, lon: -2.5512, closed: true, msg: "STOP CLOSED - ROADWORKS" },
+            { name: "Arnos Vale", lat: 51.4423, lon: -2.5658, closed: false, msg: "Cemetery Gates" },
+            { name: "Temple Meads Stn", lat: 51.4497, lon: -2.5812, closed: false, msg: "Rail Connections" },
+            { name: "Bristol Bus Station", lat: 51.4592, lon: -2.5932, closed: false, msg: "Final Destination" }
+        ];
+
+        let lastStopIndex = -1;
+
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
         }
-        loadWeather();
+        setInterval(updateClock, 1000);
+
+        function initSimulator() {
+            document.getElementById('start-btn').style.display = 'none';
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(updateLocation, error => console.log(error), {
+                    enableHighAccuracy: true,
+                    maximumAge: 0
+                });
+                speak("GPS tracking active. Welcome to ÖestVèl Transit.");
+            }
+        }
+
+        function updateLocation(position) {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+
+            STOPS.forEach((stop, index) => {
+                const distance = Math.sqrt(Math.pow(lat - stop.lat, 2) + Math.pow(lon - stop.lon, 2));
+                
+                // Trigger within ~150 meters
+                if (distance < 0.0015 && lastStopIndex !== index) {
+                    lastStopIndex = index;
+                    refreshDisplay(index);
+                }
+            });
+        }
+
+        function refreshDisplay(index) {
+            const stop = STOPS[index];
+            const nextStop = STOPS[index + 1] || { name: "End of Route" };
+
+            const nameEl = document.getElementById('display-name');
+            nameEl.innerText = stop.name;
+            document.getElementById('next-name').innerText = nextStop.name;
+            document.getElementById('display-status').innerText = stop.msg;
+
+            if (stop.closed) {
+                nameEl.classList.add('closed-text');
+                speak("Next stop, " + stop.name + ". This stop is currently closed. Please use the next available stop.");
+            } else {
+                nameEl.classList.remove('closed-text');
+                speak("Next stop, " + stop.name + ". " + stop.msg);
+            }
+        }
+
+        function speak(text) {
+            window.speechSynthesis.cancel(); // Clear queue
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-GB';
+            utterance.rate = 0.9; // Slightly slower for that bus-announcement feel
+            window.speechSynthesis.speak(utterance);
+        }
     </script>
 </body>
 </html>
