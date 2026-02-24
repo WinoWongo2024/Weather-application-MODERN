@@ -3,281 +3,168 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>X39 Full Route - AS-20260203-0834</title>
+    <title>ÖestVèl Navigator - AS-20260203-0834</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
-            --bus-blue: #161a3d;
+            --velic-purple: #6a0dad;
+            --display-blue: #161a3d;
             --pink: #d600d6;
-            --yellow: #ffcc00;
-            --white: #ffffff;
         }
 
-        body {
-            background-color: #000;
-            color: var(--white);
-            font-family: 'Arial', sans-serif;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            height: 100vh;
-            justify-content: center;
-            overflow: hidden;
-        }
+        body, html { margin: 0; padding: 0; height: 100%; background: #000; font-family: sans-serif; overflow: hidden; }
+        
+        #map { height: 70vh; width: 100%; }
 
-        #display-frame {
-            width: 95vw;
-            max-width: 500px;
-            background-color: var(--bus-blue);
-            padding: 20px;
-            box-sizing: border-box;
-            border-radius: 12px;
-            border: 3px solid #333;
-        }
-
-        .top-bar {
-            display: flex;
-            justify-content: space-between;
-            color: var(--pink);
-            font-weight: bold;
-            font-size: 1.1rem;
-            margin-bottom: 15px;
-        }
-
-        .main-content {
-            display: flex;
-            gap: 15px;
-            min-height: 180px;
-        }
-
-        .line-art {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .circle {
-            width: 20px;
-            height: 20px;
-            background: var(--pink);
-            border-radius: 50%;
-            box-shadow: 0 0 10px var(--pink);
-        }
-
-        .track {
-            width: 6px;
-            flex-grow: 1;
-            background: #ffffff33;
-        }
-
-        .stop-text-area { flex-grow: 1; }
-
-        .current-stop-name {
-            font-size: 2rem;
-            font-weight: 900;
-            margin: 0;
-            line-height: 1.1;
-            text-transform: uppercase;
-        }
-
-        .status-sub {
-            color: var(--yellow);
-            font-size: 1rem;
-            margin-top: 5px;
-            font-weight: bold;
-        }
-
-        .next-label {
-            margin-top: 25px;
-            font-size: 1.2rem;
-            opacity: 0.6;
-        }
-
-        #requested-banner {
-            background: #cc0000;
+        #dashboard {
+            height: 30vh;
+            background: var(--display-blue);
             color: white;
-            text-align: center;
-            font-weight: bold;
-            padding: 8px;
-            visibility: hidden;
-            border-radius: 4px;
-            margin-bottom: 10px;
-            font-size: 1.2rem;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            border-top: 3px solid var(--pink);
         }
 
-        .dest-footer {
-            margin-top: 20px;
-            background: white;
-            color: var(--bus-blue);
-            text-align: center;
-            font-size: 1.6rem;
-            font-weight: 900;
-            padding: 5px;
-            letter-spacing: 2px;
-        }
-
-        .controls {
-            margin-top: 15px;
+        .stats-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
-            width: 95vw;
-            max-width: 500px;
         }
 
-        button {
-            padding: 15px;
+        .stat-box {
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .stat-label { font-size: 0.7rem; color: var(--pink); text-transform: uppercase; }
+        .stat-value { font-size: 1.2rem; font-weight: bold; margin-top: 5px; }
+
+        .nav-footer {
+            background: white;
+            color: var(--display-blue);
+            text-align: center;
+            padding: 5px;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        #start-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .start-btn {
+            padding: 20px 40px;
+            background: var(--pink);
+            color: white;
             border: none;
-            border-radius: 8px;
-            font-weight: bold;
+            border-radius: 50px;
+            font-size: 1.5rem;
             cursor: pointer;
-            font-size: 0.9rem;
-        }
-
-        .btn-start { background: var(--pink); color: white; grid-column: span 2; }
-        .btn-request { background: #ff4400; color: white; }
-        .btn-skip { background: #444; color: white; }
-        
-        #gps-debug {
-            color: #444;
-            font-size: 0.7rem;
-            margin-top: 8px;
-            font-family: monospace;
         }
     </style>
 </head>
 <body>
 
-    <div id="display-frame">
-        <div id="requested-banner">STOP REQUESTED</div>
-        
-        <div class="top-bar">
-            <span id="time-now">--:--</span>
-            <span>X39 BRISTOL EXPRESS</span>
-        </div>
-
-        <div class="main-content">
-            <div class="line-art">
-                <div class="circle"></div>
-                <div class="track"></div>
-                <div class="circle" style="background: #333; box-shadow: none;"></div>
-            </div>
-            <div class="stop-text-area">
-                <h1 id="curr-stop" class="current-stop-name">READY</h1>
-                <div id="curr-status" class="status-sub">Press Start to Track GPS</div>
-                
-                <div class="next-label">Next: <span id="next-stop">---</span></div>
-            </div>
-        </div>
-
-        <div class="dest-footer">BRISTOL</div>
+    <div id="start-overlay">
+        <button class="start-btn" onclick="startNavigator()">INITIALIZE NAV</button>
     </div>
 
-    <div class="controls">
-        <button class="btn-start" onclick="initApp()">START GPS TRACKING</button>
-        <button class="btn-request" onclick="requestStop()">DING (REQUEST)</button>
-        <button class="btn-skip" onclick="manualSkip()">FORCE NEXT STOP</button>
+    <div id="map"></div>
+
+    <div id="dashboard">
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-label">Current Speed</div>
+                <div id="speed" class="stat-value">0 KM/H</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Travel Cost</div>
+                <div id="cost" class="stat-value">VC€ 0.00</div>
+            </div>
+            <div class="stat-box" style="grid-column: span 2;">
+                <div class="stat-label">Next Landmark</div>
+                <div id="next-landmark" class="stat-value">Detecting...</div>
+            </div>
+        </div>
+        <div class="nav-footer">ÖestVèl Territory Navigator</div>
     </div>
 
-    <div id="gps-debug">Waiting for coordinates...</div>
-
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        let map, userMarker, pathTrace;
+        let pointsTracked = 0;
+
         const STOPS = [
-            { name: "Bath Bus Station", lat: 51.3797, lon: -2.3585, msg: "Connections to Rail" },
-            { name: "Windsor Villas", lat: 51.3854, lon: -2.3831, msg: "Lower Weston" },
-            { name: "Chelsea Road", lat: 51.3885, lon: -2.3925, msg: "Station Road" },
-            { name: "Charmouth Road", lat: 51.3912, lon: -2.4012, msg: "Newbridge" },
-            { name: "The Globe", lat: 51.3965, lon: -2.4312, msg: "Newton St Loe" },
-            { name: "Corston", lat: 51.3978, lon: -2.4435, msg: "A4 Main Road" },
-            { name: "Saltford", lat: 51.4022, lon: -2.4515, msg: "The Shallows" },
-            { name: "Grange Road", lat: 51.4055, lon: -2.4680, msg: "Saltford West" },
-            { name: "Ellsbridge House", lat: 51.4115, lon: -2.4851, msg: "Keynsham" },
-            { name: "The Talbot", lat: 51.4185, lon: -2.5055, msg: "Keynsham Bypass" },
-            { name: "Hicks Gate", lat: 51.4245, lon: -2.5215, msg: "A4 Roundabout" },
-            { name: "Brislington Square", lat: 51.4345, lon: -2.5512, msg: "STOP CLOSED", closed: true },
-            { name: "Arnos Vale", lat: 51.4423, lon: -2.5658, msg: "Cemetery Gates" },
-            { name: "Totterdown Bridge", lat: 51.4455, lon: -2.5750, msg: "A4 Bath Road" },
-            { name: "Temple Meads Stn", lat: 51.4497, lon: -2.5812, msg: "Station Approach" },
-            { name: "Bristol Bus Station", lat: 51.4592, lon: -2.5932, msg: "Terminus" }
+            { name: "Bath Bus Station", lat: 51.3797, lon: -2.3585 },
+            { name: "Saltford", lat: 51.4022, lon: -2.4515 },
+            { name: "Keynsham", lat: 51.4115, lon: -2.4851 },
+            { name: "Temple Meads", lat: 51.4497, lon: -2.5812 },
+            { name: "Bristol Center", lat: 51.4545, lon: -2.5879 }
         ];
 
-        let activeIndex = -1;
+        function startNavigator() {
+            document.getElementById('start-overlay').style.display = 'none';
+            
+            // Initialize Map
+            map = L.map('map').setView([51.43, -2.54], 13);
+            
+            // Dark Mode Map Tiles
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-        function initApp() {
-            announce("X39 Service to Bristol. GPS active.");
+            // Add Route Pins
+            STOPS.forEach(stop => {
+                L.marker([stop.lat, stop.lon]).addTo(map)
+                    .bindPopup(stop.name);
+            });
+
+            userMarker = L.circleMarker([0, 0], { color: '#d600d6', radius: 10 }).addTo(map);
+            pathTrace = L.polyline([], { color: '#ff00ff', weight: 3 }).addTo(map);
+
             if (navigator.geolocation) {
-                navigator.geolocation.watchPosition(pos => {
-                    const { latitude, longitude } = pos.coords;
-                    document.getElementById('gps-debug').innerText = `Live: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
-                    checkProximity(latitude, longitude);
-                }, null, { enableHighAccuracy: true, maximumAge: 0 });
+                navigator.geolocation.watchPosition(updateLocation, null, { enableHighAccuracy: true });
             }
         }
 
-        function checkProximity(lat, lon) {
-            STOPS.forEach((stop, i) => {
-                const dist = Math.sqrt(Math.pow(lat - stop.lat, 2) + Math.pow(lon - stop.lon, 2));
-                // Increased radius to 0.006 (~600 meters) for Express speeds
-                if (dist < 0.006 && activeIndex !== i) {
-                    activeIndex = i;
-                    updateUI(i);
+        function updateLocation(pos) {
+            const { latitude, longitude, speed } = pos.coords;
+            const latlng = [latitude, longitude];
+
+            // Update Map
+            map.panTo(latlng);
+            userMarker.setLatLng(latlng);
+            pathTrace.addLatLng(latlng);
+
+            // Update Dashboard
+            const kmh = speed ? (speed * 3.6).toFixed(1) : "0.0";
+            document.getElementById('speed').innerText = `${kmh} KM/H`;
+            
+            // Calculate fake Velic Cost based on data points
+            pointsTracked++;
+            const velicCost = (pointsTracked * 0.05).toFixed(2);
+            document.getElementById('cost').innerText = `VC€ ${velicCost}`;
+
+            // Find Nearest Landmark
+            let closest = "Unknown Sector";
+            let minDist = 999;
+            STOPS.forEach(s => {
+                let d = Math.sqrt(Math.pow(latitude - s.lat, 2) + Math.pow(longitude - s.lon, 2));
+                if (d < minDist) {
+                    minDist = d;
+                    closest = s.name;
                 }
             });
+            document.getElementById('next-landmark').innerText = closest;
         }
-
-        function manualSkip() {
-            activeIndex++;
-            if(activeIndex >= STOPS.length) activeIndex = 0;
-            updateUI(activeIndex);
-        }
-
-        function updateUI(i) {
-            const stop = STOPS[i];
-            const next = STOPS[i+1] || { name: "End of Route" };
-            
-            document.getElementById('curr-stop').innerText = stop.name;
-            document.getElementById('curr-status').innerText = stop.msg;
-            document.getElementById('next-stop').innerText = next.name;
-            document.getElementById('requested-banner').style.visibility = "hidden";
-
-            if (stop.closed) {
-                document.getElementById('curr-stop').style.textDecoration = "line-through";
-                announce(`Next stop, ${stop.name}. This stop is currently closed.`);
-            } else {
-                document.getElementById('curr-stop').style.textDecoration = "none";
-                announce(`Next stop, ${stop.name}. ${stop.msg}`);
-            }
-        }
-
-        function requestStop() {
-            document.getElementById('requested-banner').style.visibility = "visible";
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(850, audioCtx.currentTime);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
-            osc.stop(audioCtx.currentTime + 0.4);
-        }
-
-        function announce(text) {
-            window.speechSynthesis.cancel();
-            const utter = new SpeechSynthesisUtterance(text);
-            const voices = window.speechSynthesis.getVoices();
-            // Force British Female Voice if possible
-            const target = voices.find(v => v.lang.includes('GB') && (v.name.includes('Female') || v.name.includes('Serena') || v.name.includes('Google'))) || voices.find(v => v.lang.includes('GB'));
-            if(target) utter.voice = target;
-            utter.rate = 0.88; 
-            window.speechSynthesis.speak(utter);
-        }
-
-        setInterval(() => {
-            const d = new Date();
-            document.getElementById('time-now').innerText = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-        }, 1000);
     </script>
 </body>
 </html>
